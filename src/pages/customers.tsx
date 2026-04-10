@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useGetAdminCustomers, getGetAdminCustomersQueryKey } from "@workspace/api-client-react";
+import { useGetAdminCustomers, getGetAdminCustomersQueryKey, type AdminCustomer } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,19 +16,28 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 /* ─── types ─────────────────────────────────────────── */
-interface CustomerRow {
-  userId: string;
-  email: string | null;
-  totalOrders: number;
-  totalSpent: number;
-  lastOrderAt: string | null;
+type CustomerRow = AdminCustomer;
+
+interface ProfilePhone { id: number; phoneNumber: string; label: string; isPrimary: boolean; createdAt: string }
+interface ProfilePlan  { id: number; name: string; dataSize: string; validity: string; price: number; category: string }
+interface ProfileOrder {
+  id: number;
+  planId: number;
+  recipientPhone: string;
+  payerPhone: string;
+  amount: number;
+  status: string;
+  transactionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  plan: ProfilePlan | null;
 }
 
 interface CustomerProfile {
   userId: string;
   email: string | null;
-  phones: { id: number; phoneNumber: string; label: string; isPrimary: boolean; createdAt: string }[];
-  orders: any[];
+  phones: ProfilePhone[];
+  orders: ProfileOrder[];
   stats: {
     totalOrders: number;
     totalSpent: number;
@@ -279,7 +288,7 @@ export default function Customers() {
                   <TableRow
                     key={customer.userId}
                     className="cursor-pointer hover:bg-primary/5 transition-colors"
-                    onClick={() => setSelectedCustomer(customer as CustomerRow)}
+                    onClick={() => setSelectedCustomer(customer)}
                   >
                     <TableCell className="text-muted-foreground text-sm font-mono">
                       {(page - 1) * 20 + idx + 1}
