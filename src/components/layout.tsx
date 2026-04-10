@@ -1,16 +1,17 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, ShoppingCart, List, Users, LogOut } from "lucide-react";
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarHeader } from "@/components/ui/sidebar";
+import {
+  LayoutDashboard, ShoppingCart, List, Users, LogOut, Database,
+} from "lucide-react";
+
+const navItems = [
+  { label: "Dashboard",  href: "/dashboard", icon: LayoutDashboard },
+  { label: "Orders",     href: "/orders",    icon: ShoppingCart },
+  { label: "Plans",      href: "/plans",     icon: List },
+  { label: "Customers",  href: "/customers", icon: Users },
+];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
-
-  const navItems = [
-    { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Orders", href: "/orders", icon: ShoppingCart },
-    { label: "Plans", href: "/plans", icon: List },
-    { label: "Customers", href: "/customers", icon: Users },
-  ];
 
   const handleLogout = () => {
     localStorage.removeItem("admin_token");
@@ -18,56 +19,84 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full bg-muted/20">
-        <Sidebar className="border-r border-sidebar-border bg-sidebar">
-          <SidebarHeader className="p-4 border-b border-sidebar-border/50">
-            <div className="flex items-center gap-2">
-              <div className="bg-primary text-primary-foreground p-1 rounded">
-                <LayoutDashboard className="h-5 w-5" />
-              </div>
-              <h1 className="font-bold text-sidebar-foreground">Felix Admin</h1>
-            </div>
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu className="mt-4 gap-1">
-                  {navItems.map((item) => {
-                    const isActive = location === item.href;
-                    return (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
-                          <Link href={item.href} className="flex items-center gap-3 w-full p-2">
-                            <item.icon className="h-4 w-4" />
-                            <span>{item.label}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-          <div className="mt-auto p-4 border-t border-sidebar-border/50">
-            <button 
-              onClick={handleLogout}
-              className="flex items-center gap-3 w-full p-2 text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Sign out</span>
-            </button>
+    <div className="flex h-screen w-full overflow-hidden" style={{ background: "hsl(237,32%,7%)" }}>
+      {/* ── Sidebar ─────────────────────────────────────────── */}
+      <aside
+        className="flex flex-col shrink-0 w-52"
+        style={{ background: "hsl(237,35%,6%)", borderRight: "1px solid hsl(237,22%,13%)" }}
+      >
+        {/* Brand */}
+        <div className="flex items-center gap-2.5 px-4 py-5" style={{ borderBottom: "1px solid hsl(237,22%,13%)" }}>
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg text-white text-xs font-bold"
+            style={{ background: "hsl(152,80%,35%)" }}>
+            FD
           </div>
-        </Sidebar>
-        <main className="flex-1 flex flex-col h-screen overflow-hidden bg-background">
-          <div className="flex-1 overflow-auto p-8">
-            <div className="max-w-6xl mx-auto">
-              {children}
-            </div>
+          <div>
+            <p className="text-sm font-bold text-white leading-none">Felix Data</p>
+            <p className="text-[10px] mt-0.5" style={{ color: "hsl(220,15%,50%)" }}>Admin Panel</p>
           </div>
-        </main>
-      </div>
-    </SidebarProvider>
+        </div>
+
+        {/* User */}
+        <div className="flex items-center gap-2.5 px-4 py-3.5" style={{ borderBottom: "1px solid hsl(237,22%,13%)" }}>
+          <div className="flex items-center justify-center w-7 h-7 rounded-full text-white text-[11px] font-semibold"
+            style={{ background: "hsl(237,22%,22%)" }}>
+            <Database className="h-3.5 w-3.5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-white leading-none">Felix</p>
+            <p className="text-[10px] mt-0.5" style={{ color: "hsl(152,80%,45%)" }}>Super Admin</p>
+          </div>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
+          {navItems.map(({ label, href, icon: Icon }) => {
+            const active = location === href || location.startsWith(href + "/");
+            return (
+              <Link key={href} href={href}>
+                <div
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-sm font-medium transition-all"
+                  style={active
+                    ? { background: "hsl(152,80%,35%)", color: "#fff" }
+                    : { color: "hsl(220,15%,55%)" }
+                  }
+                  onMouseEnter={e => {
+                    if (!active) (e.currentTarget as HTMLDivElement).style.color = "#fff";
+                  }}
+                  onMouseLeave={e => {
+                    if (!active) (e.currentTarget as HTMLDivElement).style.color = "hsl(220,15%,55%)";
+                  }}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {label}
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Sign out */}
+        <div className="px-2 pb-4" style={{ borderTop: "1px solid hsl(237,22%,13%)" }}>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm transition-all mt-3"
+            style={{ color: "hsl(220,15%,45%)" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#fff"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "hsl(220,15%,45%)"; }}
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main ─────────────────────────────────────────────── */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-6">
+          {children}
+        </div>
+      </main>
+    </div>
   );
 }

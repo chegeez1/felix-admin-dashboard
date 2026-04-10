@@ -120,50 +120,51 @@
 }
 
 .dark {
-  --background: 240 10% 10%;
-  --foreground: 0 0% 98%;
+  /* Deep navy-black matching the screenshot */
+  --background: 237 32% 7%;
+  --foreground: 220 20% 92%;
 
-  --card: 240 10% 12%;
-  --card-foreground: 0 0% 98%;
-  --card-border: 240 5.9% 20%;
+  --card: 237 28% 12%;
+  --card-foreground: 220 20% 92%;
+  --card-border: 237 22% 18%;
 
-  --popover: 240 10% 12%;
-  --popover-foreground: 0 0% 98%;
-  --popover-border: 240 5.9% 20%;
+  --popover: 237 28% 12%;
+  --popover-foreground: 220 20% 92%;
+  --popover-border: 237 22% 18%;
 
-  --primary: 152 100% 40%;
+  --primary: 152 80% 45%;
   --primary-foreground: 0 0% 100%;
   
-  --secondary: 240 5.9% 20%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary: 237 22% 18%;
+  --secondary-foreground: 220 20% 80%;
 
-  --muted: 240 5.9% 20%;
-  --muted-foreground: 240 5% 65%;
+  --muted: 237 22% 16%;
+  --muted-foreground: 220 15% 55%;
 
-  --accent: 240 5.9% 20%;
-  --accent-foreground: 0 0% 98%;
+  --accent: 237 22% 18%;
+  --accent-foreground: 220 20% 92%;
 
-  --destructive: 0 62.8% 30.6%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 240 5.9% 20%;
-  --input: 240 5.9% 20%;
-  --ring: 152 100% 40%;
+  --border: 237 22% 18%;
+  --input: 237 22% 18%;
+  --ring: 152 80% 45%;
 
-  --sidebar: 240 10% 10%;
-  --sidebar-foreground: 0 0% 98%;
-  --sidebar-border: 240 5.9% 20%;
-  --sidebar-primary: 152 100% 40%;
+  --sidebar: 237 35% 6%;
+  --sidebar-foreground: 220 20% 85%;
+  --sidebar-border: 237 22% 14%;
+  --sidebar-primary: 152 80% 45%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 5.9% 20%;
-  --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-ring: 152 100% 40%;
+  --sidebar-accent: 237 22% 14%;
+  --sidebar-accent-foreground: 220 20% 85%;
+  --sidebar-ring: 152 80% 45%;
 
-  --chart-1: 152 100% 40%;
-  --chart-2: 240 10% 80%;
+  --chart-1: 152 80% 45%;
+  --chart-2: 199 89% 48%;
   --chart-3: 152 50% 60%;
-  --chart-4: 240 10% 60%;
-  --chart-5: 152 80% 20%;
+  --chart-4: 271 91% 65%;
+  --chart-5: 32 95% 55%;
 }
 
 @layer base {
