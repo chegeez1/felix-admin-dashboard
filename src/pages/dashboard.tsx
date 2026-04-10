@@ -1,4 +1,4 @@
-import { useGetAdminStats, getGetAdminStatsQueryKey } from "@workspace/api-client-react";
+import { useGetAdminStats, useGetAdminOrders, getGetAdminStatsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -7,7 +7,10 @@ import {
 import {
   TrendingUp, ShoppingCart, Truck, CheckCircle2,
   Clock, XCircle, Users, Package, RefreshCw,
+  ArrowRight, Loader2,
 } from "lucide-react";
+import { Link } from "wouter";
+import { formatDistanceToNow } from "date-fns";
 
 /* ── local types ──────────────────────────────────────────── */
 interface DayRevenue { date: string; revenue: number }
@@ -15,6 +18,27 @@ interface TopPlan    { name: string; dataSize: string; orders: number; revenue: 
 
 /* ── helpers ──────────────────────────────────────────────── */
 const fmtKes = (n: number) => `KES ${n.toLocaleString()}`;
+
+/* ── status badge ─────────────────────────────────────────── */
+const STATUS_STYLE: Record<string, { label: string; bg: string; color: string }> = {
+  pending:   { label: "Pending",   bg: "hsl(32,80%,18%)",  color: "hsl(32,95%,60%)"  },
+  paid:      { label: "Paid",      bg: "hsl(217,80%,18%)", color: "hsl(217,91%,65%)" },
+  delivered: { label: "Delivered", bg: "hsl(142,70%,14%)", color: "hsl(142,70%,55%)" },
+  failed:    { label: "Failed",    bg: "hsl(0,70%,18%)",   color: "hsl(0,70%,65%)"   },
+  cancelled: { label: "Cancelled", bg: "hsl(220,15%,18%)", color: "hsl(220,15%,55%)" },
+};
+
+function StatusPill({ status }: { status: string }) {
+  const s = STATUS_STYLE[status] ?? { label: status, bg: "hsl(220,15%,18%)", color: "hsl(220,15%,55%)" };
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+      style={{ background: s.bg, color: s.color }}
+    >
+      {s.label}
+    </span>
+  );
+}
 
 /* ── stat card ────────────────────────────────────────────── */
 interface StatCardProps {
@@ -75,12 +99,15 @@ export default function Dashboard() {
   const key = getGetAdminStatsQueryKey();
 
   const { data: stats, isLoading } = useGetAdminStats({ query: { queryKey: key } });
+  const { data: recentData, isLoading: txLoading } = useGetAdminOrders({ limit: 10 });
 
   const handleRefresh = () => { qc.invalidateQueries({ queryKey: key }); };
 
   const dailyRevenue: DayRevenue[] = stats?.dailyRevenue ?? [];
   const topPlans:     TopPlan[]    = stats?.topPlans     ?? [];
   const topMax = topPlans[0]?.revenue ?? 1;
+
+  const recentOrders = recentData?.orders ?? [];
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -103,92 +130,192 @@ export default function Dashboard() {
           Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)
         ) : (
           <>
-            <StatCard label="Total Revenue"     value={fmtKes(stats?.totalRevenue    ?? 0)} icon={<TrendingUp  className="h-4 w-4 text-white" />} iconBg="hsl(152,70%,32%)" sub={`Today: ${fmtKes(stats?.revenueToday ?? 0)}`} />
-            <StatCard label="Total Orders"      value={stats?.totalOrders    ?? 0}           icon={<ShoppingCart className="h-4 w-4 text-white" />} iconBg="hsl(217,91%,40%)" sub={`Today: ${stats?.ordersToday ?? 0} orders`} />
-            <StatCard label="Delivered"         value={stats?.deliveredOrders ?? 0}          icon={<Truck        className="h-4 w-4 text-white" />} iconBg="hsl(142,70%,32%)" sub="Data sent successfully" />
-            <StatCard label="Paid (Awaiting)"   value={stats?.paidOrders     ?? 0}           icon={<CheckCircle2 className="h-4 w-4 text-white" />} iconBg="hsl(271,80%,42%)" sub="Payment confirmed" />
-            <StatCard label="Pending"           value={stats?.pendingOrders  ?? 0}           icon={<Clock        className="h-4 w-4 text-white" />} iconBg="hsl(32,95%,40%)"  sub="Awaiting M-Pesa" />
+            <StatCard label="Total Revenue"      value={fmtKes(stats?.totalRevenue    ?? 0)} icon={<TrendingUp  className="h-4 w-4 text-white" />} iconBg="hsl(152,70%,32%)" sub={`Today: ${fmtKes(stats?.revenueToday ?? 0)}`} />
+            <StatCard label="Total Orders"       value={stats?.totalOrders    ?? 0}           icon={<ShoppingCart className="h-4 w-4 text-white" />} iconBg="hsl(217,91%,40%)" sub={`Today: ${stats?.ordersToday ?? 0} orders`} />
+            <StatCard label="Delivered"          value={stats?.deliveredOrders ?? 0}          icon={<Truck        className="h-4 w-4 text-white" />} iconBg="hsl(142,70%,32%)" sub="Data sent successfully" />
+            <StatCard label="Paid (Awaiting)"    value={stats?.paidOrders     ?? 0}           icon={<CheckCircle2 className="h-4 w-4 text-white" />} iconBg="hsl(271,80%,42%)" sub="Payment confirmed" />
+            <StatCard label="Pending"            value={stats?.pendingOrders  ?? 0}           icon={<Clock        className="h-4 w-4 text-white" />} iconBg="hsl(32,95%,40%)"  sub="Awaiting M-Pesa" />
             <StatCard label="Failed / Cancelled" value={(stats?.failedOrders ?? 0) + (stats?.cancelledOrders ?? 0)} icon={<XCircle className="h-4 w-4 text-white" />} iconBg="hsl(0,70%,42%)" sub={`${stats?.failedOrders ?? 0} failed · ${stats?.cancelledOrders ?? 0} cancelled`} />
-            <StatCard label="Customers"         value={stats?.totalCustomers ?? 0}           icon={<Users        className="h-4 w-4 text-white" />} iconBg="hsl(199,80%,36%)" sub="Unique active users" />
-            <StatCard label="Active Plans"      value={stats?.totalPlans     ?? 0}           icon={<Package      className="h-4 w-4 text-white" />} iconBg="hsl(237,40%,36%)" sub="Data bundles listed" />
+            <StatCard label="Customers"          value={stats?.totalCustomers ?? 0}           icon={<Users        className="h-4 w-4 text-white" />} iconBg="hsl(199,80%,36%)" sub="Unique active users" />
+            <StatCard label="Active Plans"       value={stats?.totalPlans     ?? 0}           icon={<Package      className="h-4 w-4 text-white" />} iconBg="hsl(237,40%,36%)" sub="Data bundles listed" />
           </>
         )}
       </div>
 
-      {/* Revenue chart */}
-      <div className="rounded-xl p-5" style={{ background: "hsl(237,28%,12%)", border: "1px solid hsl(237,22%,18%)" }}>
-        <p className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" style={{ color: "hsl(152,80%,45%)" }} />
-          Revenue — Last 14 Days
-        </p>
+      {/* ── Recent Transactions ─────────────────────────────── */}
+      <div className="rounded-xl overflow-hidden" style={{ background: "hsl(237,28%,12%)", border: "1px solid hsl(237,22%,18%)" }}>
+        {/* Header row */}
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid hsl(237,22%,18%)" }}>
+          <p className="text-sm font-semibold text-white flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4" style={{ color: "hsl(152,80%,45%)" }} />
+            Recent Transactions
+          </p>
+          <Link href="/orders">
+            <span
+              className="flex items-center gap-1 text-xs cursor-pointer transition-colors hover:text-white"
+              style={{ color: "hsl(152,80%,45%)" }}
+            >
+              View all <ArrowRight className="h-3 w-3" />
+            </span>
+          </Link>
+        </div>
 
-        {dailyRevenue.length === 0 ? (
-          <div className="h-36 flex items-center justify-center text-sm" style={{ color: "hsl(220,15%,40%)" }}>
-            No revenue data yet
+        {/* Loading */}
+        {txLoading && (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin" style={{ color: "hsl(220,15%,45%)" }} />
           </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={150}>
-            <AreaChart data={dailyRevenue} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="hsl(152,80%,45%)" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="hsl(152,80%,45%)" stopOpacity={0}    />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="hsl(237,22%,18%)" strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: "hsl(220,15%,45%)", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "hsl(220,15%,45%)", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip content={<ChartTooltip />} cursor={{ stroke: "hsl(237,22%,25%)" }} />
-              <Area
-                type="monotone" dataKey="revenue"
-                stroke="hsl(152,80%,45%)" strokeWidth={2}
-                fill="url(#revGrad)" dot={false}
-                activeDot={{ r: 4, fill: "hsl(152,80%,45%)", stroke: "hsl(237,28%,12%)", strokeWidth: 2 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+        )}
+
+        {/* Empty state */}
+        {!txLoading && recentOrders.length === 0 && (
+          <p className="text-sm text-center py-10" style={{ color: "hsl(220,15%,40%)" }}>
+            No transactions yet
+          </p>
+        )}
+
+        {/* Table */}
+        {!txLoading && recentOrders.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: "1px solid hsl(237,22%,18%)" }}>
+                  {["#", "Time", "Recipient", "Plan", "Amount", "Status"].map(h => (
+                    <th
+                      key={h}
+                      className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
+                      style={{ color: "hsl(220,15%,45%)" }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {recentOrders.map((order, idx) => (
+                  <tr
+                    key={order.id}
+                    style={{ borderBottom: idx < recentOrders.length - 1 ? "1px solid hsl(237,22%,16%)" : undefined }}
+                    className="transition-colors hover:bg-white/[0.025]"
+                  >
+                    <td className="px-5 py-3.5 font-mono text-xs" style={{ color: "hsl(220,15%,45%)" }}>
+                      #{order.id}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs whitespace-nowrap" style={{ color: "hsl(220,15%,55%)" }}>
+                      {order.createdAt
+                        ? formatDistanceToNow(new Date(order.createdAt), { addSuffix: true })
+                        : "—"}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div>
+                        <p className="font-mono text-xs text-white">{order.recipientPhone}</p>
+                        {order.recipientPhone !== order.payerPhone && (
+                          <p className="text-[11px] mt-0.5" style={{ color: "hsl(220,15%,45%)" }}>
+                            paid by {order.payerPhone}
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {order.plan ? (
+                        <div>
+                          <p className="text-white font-medium text-xs">{order.plan.name}</p>
+                          <p className="text-[11px] mt-0.5" style={{ color: "hsl(220,15%,45%)" }}>
+                            {order.plan.dataSize} · {order.plan.validity}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-xs font-mono" style={{ color: "hsl(220,15%,40%)" }}>
+                          Plan #{order.planId}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 font-bold text-xs whitespace-nowrap" style={{ color: "hsl(152,80%,50%)" }}>
+                      {fmtKes(Number(order.amount))}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <StatusPill status={order.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* Top plans */}
-      <div className="rounded-xl p-5" style={{ background: "hsl(237,28%,12%)", border: "1px solid hsl(237,22%,18%)" }}>
-        <p className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" style={{ color: "hsl(152,80%,45%)" }} />
-          Top Plans by Revenue
-        </p>
-
-        {topPlans.length === 0 ? (
-          <p className="text-sm py-4 text-center" style={{ color: "hsl(220,15%,40%)" }}>
-            No completed orders yet
+      {/* Revenue chart + Top plans side by side */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Revenue chart */}
+        <div className="rounded-xl p-5" style={{ background: "hsl(237,28%,12%)", border: "1px solid hsl(237,22%,18%)" }}>
+          <p className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" style={{ color: "hsl(152,80%,45%)" }} />
+            Revenue — Last 14 Days
           </p>
-        ) : (
-          <div className="space-y-4">
-            {topPlans.map((plan, i) => {
-              const pct = Math.round((plan.revenue / topMax) * 100);
-              return (
-                <div key={i}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div>
-                      <p className="text-sm font-medium text-white">{plan.name}</p>
-                      <p className="text-[11px]" style={{ color: "hsl(220,15%,45%)" }}>
-                        {plan.orders} {plan.orders === 1 ? "order" : "orders"}
-                      </p>
+          {dailyRevenue.length === 0 ? (
+            <div className="h-36 flex items-center justify-center text-sm" style={{ color: "hsl(220,15%,40%)" }}>
+              No revenue data yet
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={150}>
+              <AreaChart data={dailyRevenue} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="hsl(152,80%,45%)" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="hsl(152,80%,45%)" stopOpacity={0}    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="hsl(237,22%,18%)" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: "hsl(220,15%,45%)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "hsl(220,15%,45%)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ stroke: "hsl(237,22%,25%)" }} />
+                <Area
+                  type="monotone" dataKey="revenue"
+                  stroke="hsl(152,80%,45%)" strokeWidth={2}
+                  fill="url(#revGrad)" dot={false}
+                  activeDot={{ r: 4, fill: "hsl(152,80%,45%)", stroke: "hsl(237,28%,12%)", strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Top plans */}
+        <div className="rounded-xl p-5" style={{ background: "hsl(237,28%,12%)", border: "1px solid hsl(237,22%,18%)" }}>
+          <p className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <Package className="h-4 w-4" style={{ color: "hsl(152,80%,45%)" }} />
+            Top Plans by Revenue
+          </p>
+          {topPlans.length === 0 ? (
+            <p className="text-sm py-4 text-center" style={{ color: "hsl(220,15%,40%)" }}>
+              No completed orders yet
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {topPlans.map((plan, i) => {
+                const pct = Math.round((plan.revenue / topMax) * 100);
+                return (
+                  <div key={i}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div>
+                        <p className="text-xs font-medium text-white">{plan.name}</p>
+                        <p className="text-[11px]" style={{ color: "hsl(220,15%,45%)" }}>
+                          {plan.orders} {plan.orders === 1 ? "order" : "orders"}
+                        </p>
+                      </div>
+                      <span className="text-xs font-bold" style={{ color: "hsl(152,80%,50%)" }}>
+                        {fmtKes(plan.revenue)}
+                      </span>
                     </div>
-                    <span className="text-sm font-bold" style={{ color: "hsl(152,80%,50%)" }}>
-                      {fmtKes(plan.revenue)}
-                    </span>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(237,22%,20%)" }}>
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "hsl(152,80%,40%)" }} />
+                    </div>
                   </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(237,22%,20%)" }}>
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${pct}%`, background: "hsl(152,80%,40%)" }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
