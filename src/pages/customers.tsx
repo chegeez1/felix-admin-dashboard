@@ -196,7 +196,7 @@ function CustomerProfileSheet({ customer, onClose }: { customer: CustomerRow | n
                   <p className="text-sm text-muted-foreground text-center py-6">No orders yet.</p>
                 ) : (
                   <div className="space-y-2.5">
-                    {profile.orders.map((order: any) => (
+                    {profile.orders.map((order) => (
                       <Card key={order.id} className="shadow-none border">
                         <CardContent className="p-3 space-y-2">
                           <div className="flex items-start justify-between gap-2">
